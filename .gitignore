@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+*.js.map
+*.d.ts
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets (should NEVER be committed)
+.env
+.env.local
+.env.*.local
+secrets.json
+credentials.json
+*.pem
+*.key
+*password.txt
+*.secret
+config.yml.bak
+caddy/caddy.json
+
+# Build artifacts (not for version control)
+frontend/dist.tar.gz
+frontend.tar.gz
+deploy/terraform/.terraform/*
+deploy/terraform/*.tfstate*
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Rotation-parity scratch tooling — never commit these
+_dumps/
+engines/go/.shapecheck/
+*.rs_shapes*.go
+*_shapes_test_main.go
+*_shapes.rs
+rust_shapes.rs
+target/
+Cargo.lock
+__pycache__/
+
+# Rust engine build output
+engines/*/target/
+
+# Notes and Local Dev
+memory/
+docs/
