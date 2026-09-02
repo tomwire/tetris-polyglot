@@ -1,0 +1,28 @@
+name: Secret Detection (TruffleHog)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 8 * * 1' # Run weekly on Mondays at 8 AM UTC
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  trufflehog:
+    name: TruffleHog Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog Community Edition
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified

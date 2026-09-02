@@ -1,0 +1,146 @@
+# Polyglot Tetris — Security Scanning Pipeline
+# Runs on every PR and weekly on main. Covers SAST, SCA, secret scanning, container scans.
+
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6 AM UTC
+
+jobs:
+  # ──────────────────────────────────────────────
+  # CodeQL — SAST across all languages
+  # ──────────────────────────────────────────────
+  codeql:
+    runs-on: ubuntu-latest
+    permissions: { actions: read, security-events: write }
+    strategy: { fail-fast: false, matrix: { language: ['go', 'javascript-typescript', 'python'] } }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+
+      - name: Autobuild (where possible)
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with: { category: '/language:${{ matrix.language }}' }
+
+  # ──────────────────────────────────────────────
+  # gitleaks — Secret detection in source history
+  # ──────────────────────────────────────────────
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+
+  # ──────────────────────────────────────────────
+  # Dependency Audits (per-engine)
+  # ──────────────────────────────────────────────
+  audit-go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.22' }
+      - name: govulncheck
+        working-directory: engines/go
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./... || true
+
+  audit-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: cargo audit
+        working-directory: engines/rust
+        run: |
+          cargo install cargo-audit 2>/dev/null || echo "skipped"
+          cargo audit || true
+
+  audit-node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: npm audit (engines/node)
+        working-directory: engines/node
+        run: npm audit --audit-level=high || true
+
+  audit-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - name: pip-audit
+        working-directory: engines/python
+        run: |
+          pip install pip-audit 2>/dev/null || echo "skipped"
+          pip-audit --require-hashes=false || true
+
+  # ──────────────────────────────────────────────
+  # Trivy — Container image vulnerability scanning
+  # ──────────────────────────────────────────────
+  trivy:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, security-events: write, actions: read }
+    strategy: { fail-fast: false, matrix: { engine: [go, rust, node, python] } }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image for scanning
+        working-directory: engines/${{ matrix.engine }}
+        run: docker build -t tetris-${{ matrix.engine }} .
+
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'tetris-${{ matrix.engine }}'
+          format: 'sarif'
+          output: 'trivy-${{ matrix.engine }}.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: 'trivy-${{ matrix.engine }}.sarif' }
+
+  # ──────────────────────────────────────────────
+  # Docker security best practices check
+  # ──────────────────────────────────────────────
+  docker-hardening:
+    runs-on: ubuntu-latest
+    strategy: { fail-fast: false, matrix: { engine: [go, rust, node, python] } }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Dockerfile best practices (hadolint)
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: engines/${{ matrix.engine }}/Dockerfile
+          failure-threshold: warning
+          # DL3018/DL3008: pinning apk/apt package versions is impractical —
+          # Alpine/Debian repos drop old versions, which would break rebuilds.
+          ignore: DL3018,DL3008

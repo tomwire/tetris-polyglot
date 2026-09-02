@@ -1,0 +1,5 @@
+# Build artifacts (scratch binaries left here during dev)
+/out/
+/server_bin
+/*.exe
+*.tmp

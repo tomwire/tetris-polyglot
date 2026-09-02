@@ -1,0 +1,5 @@
+# Rust build artifacts — excluded from the Docker build context.
+# The Dockerfile copies only Cargo.toml/Cargo.lock + src/, but a local
+# target/debug tree (with root-owned incremental lock files) breaks context
+# discovery. Keep this dir out entirely.
+target/

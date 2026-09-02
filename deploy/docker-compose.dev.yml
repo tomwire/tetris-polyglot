@@ -1,0 +1,76 @@
+# Polyglot Tetris — Development Overrides
+# Applied on top of docker-compose.yml: hot-reload, no TLS, direct source mounts
+
+services:
+  go-engine:
+    build:
+      context: ../engines/go
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../engines/go:/app
+    ports:
+      - "8001:8000"
+      - "9001:9000"
+    # Hot-reload via Entrypoint script that watches file changes
+    command: ["sh", "-c", "go run cmd/server/main.go"]
+
+  rust-engine:
+    build:
+      context: ../engines/rust
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../engines/rust/src:/app/src
+    ports:
+      - "8002:8000"
+      - "9002:9000"
+    command: ["cargo", "run", "--bin", "tetris-engine"]
+
+  node-engine:
+    build:
+      context: ../engines/node
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../engines/node/src:/app/src
+      - ../engines/node/node_modules:/app/node_modules
+    ports:
+      - "8003:8000"
+      - "9003:9000"
+      - "9229:9229"   # Node.js inspector port
+    command: ["npm", "run", "dev"]
+
+  python-engine:
+    build:
+      context: ../engines/python
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../engines/python/src:/app/src
+    ports:
+      - "8004:8000"
+      - "9004:9000"
+      - "5678:5678"   # Python debugger port
+    command: ["python", "-m", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ../frontend/src:/app/src
+    ports:
+      - "3000:3000"
+    command: ["npm", "run", "dev"]
+
+  # Caddy in dev mode — no auto-TLS, HTTP only, path-based routing
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8080:80"     # Dev HTTP (no TLS)
+    volumes:
+      - ./caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+
+networks:
+  default:
+    name: tetris-polyglot-net
+    driver: bridge

@@ -1,0 +1,113 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Cross-Engine CPU Usage (%)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "process_cpu_seconds_total{engine=\"go\"}", "legendFormat": "Go" },
+        { "expr": "process_cpu_seconds_total{engine=\"rust\"}", "legendFormat": "Rust" },
+        { "expr": "process_cpu_seconds_total{engine=\"node\"}", "legendFormat": "Node.js" },
+        { "expr": "process_cpu_seconds_total{engine=\"python\"}", "legendFormat": "Python" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "percent" },
+        "overrides": []
+      }
+    },
+    {
+      "title": "RSS Memory (MB)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "process_resident_memory_bytes{engine=\"go\"} / 1048576", "legendFormat": "Go" },
+        { "expr": "process_resident_memory_bytes{engine=\"rust\"} / 1048576", "legendFormat": "Rust" },
+        { "expr": "process_resident_memory_bytes{engine=\"node\"} / 1048576", "legendFormat": "Node.js" },
+        { "expr": "process_resident_memory_bytes{engine=\"python\"} / 1048576", "legendFormat": "Python" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "bytes" },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Lines Cleared (Total)",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "tetris_lines_cleared_total{engine=\"go\"}", "legendFormat": "Go" },
+        { "expr": "tetris_lines_cleared_total{engine=\"rust\"}", "legendFormat": "Rust" },
+        { "expr": "tetris_lines_cleared_total{engine=\"node\"}", "legendFormat": "Node.js" },
+        { "expr": "tetris_lines_cleared_total{engine=\"python\"}", "legendFormat": "Python" }
+      ],
+      "fieldConfig": { "defaults": {}, "overrides": [] }
+    },
+    {
+      "title": "Active Sessions",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "tetris_active_sessions{engine=\"go\"}", "legendFormat": "Go" },
+        { "expr": "tetris_active_sessions{engine=\"rust\"}", "legendFormat": "Rust" },
+        { "expr": "tetris_active_sessions{engine=\"node\"}", "legendFormat": "Node.js" },
+        { "expr": "tetris_active_sessions{engine=\"python\"}", "legendFormat": "Python" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      }
+    },
+    {
+      "title": "Tick Duration (Histogram)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum(rate(tetris_tick_duration_seconds_bucket{engine=\"go\"}[5m])) by (le))", "legendFormat": "Go p95" },
+        { "expr": "histogram_quantile(0.95, sum(rate(tetris_tick_duration_seconds_bucket{engine=\"rust\"}[5m])) by (le))", "legendFormat": "Rust p95" },
+        { "expr": "histogram_quantile(0.95, sum(rate(tetris_tick_duration_seconds_bucket{engine=\"node\"}[5m])) by (le))", "legendFormat": "Node p95" },
+        { "expr": "histogram_quantile(0.95, sum(rate(tetris_tick_duration_seconds_bucket{engine=\"python\"}[5m])) by (le))", "legendFormat": "Python p95" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "s" },
+        "overrides": []
+      }
+    },
+    {
+      "title": "State Handoffs (Engine Switches)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "targets": [
+        { "expr": "increase(tetris_state_exports_total[5m])", "legendFormat": "Exports (all)" },
+        { "expr": "increase(tetris_state_imports_total[5m])", "legendFormat": "Imports (all)" }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" },
+        "overrides": []
+      }
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["tetris-polyglot", "benchmark"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "Polyglot Tetris — Runtime Benchmark",
+  "uid": "tetris-polyglot-benchmark",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,0 +1,82 @@
+# Polyglot Tetris — Prometheus Configuration
+# Scrapes metrics from all four engine runtimes + Caddy reverse proxy.
+
+global:
+  scrape_interval: 5s       # Default scrape interval
+  evaluation_interval: 15s  # Rule evaluation interval
+  scrape_timeout: 3s        # Per-scrape timeout
+
+# Alertmanager configuration (optional — disabled for local dev)
+alerting:
+  alertmanagers: []
+
+# Rule files (disabled for now)
+rule_files: []
+
+# Scrape configurations — one per engine + infra
+scrape_configs:
+  # ──────────────────────────────────────────────
+  # Go Engine (port 8001)
+  # ──────────────────────────────────────────────
+  - job_name: "go-engine"
+    metrics_path: "/metrics"
+    scrape_interval: 2s     # Lower interval for finer granularity
+    static_configs:
+      - targets: ["host.docker.internal:8001"]
+        labels:
+          engine: "go"
+          language: "Gorilla WebSocket + net/http"
+
+  # ──────────────────────────────────────────────
+  # Rust Engine (port 8002)
+  # ──────────────────────────────────────────────
+  - job_name: "rust-engine"
+    metrics_path: "/metrics"
+    scrape_interval: 2s
+    static_configs:
+      - targets: ["host.docker.internal:8002"]
+        labels:
+          engine: "rust"
+          language: "Axum + tokio-tungstenite"
+
+  # ──────────────────────────────────────────────
+  # Node.js Engine (port 8003)
+  # ──────────────────────────────────────────────
+  - job_name: "node-engine"
+    metrics_path: "/metrics"
+    scrape_interval: 2s
+    static_configs:
+      - targets: ["host.docker.internal:8003"]
+        labels:
+          engine: "node"
+          language: "Fastify + @fastify/websocket"
+
+  # ──────────────────────────────────────────────
+  # Python Engine (port 8004)
+  # ──────────────────────────────────────────────
+  - job_name: "python-engine"
+    metrics_path: "/metrics"
+    scrape_interval: 2s
+    static_configs:
+      - targets: ["host.docker.internal:8004"]
+        labels:
+          engine: "python"
+          language: "FastAPI + websockets"
+
+  # ──────────────────────────────────────────────
+  # Caddy Reverse Proxy (internal, for monitoring infra health)
+  # ──────────────────────────────────────────────
+  - job_name: "caddy-proxy"
+    metrics_path: "/metrics"
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8080"]
+        labels:
+          service: "caddy"
+
+  # ──────────────────────────────────────────────
+  # Prometheus self-monitoring (already scraping via 'prometheus' job by default)
+  # ──────────────────────────────────────────────
+
+# Relabel configurations (optional — for dynamic target discovery in prod)
+relabel_configs: []

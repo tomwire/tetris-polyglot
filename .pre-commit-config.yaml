@@ -1,0 +1,16 @@
+repos:
+  # TruffleHog secret scanner (community edition, free tier)
+  - repo: https://github.com/trufflesecurity/trufflehog-precommit-hooks
+    rev: v1.0.14
+    hooks:
+      - id: trufflehog
+        name: TruffleHog Secret Detection
+        entry: trufflehog pre-commit --only-verified
+
+  # Gitleaks for defense-in-depth (second opinion)
+  - repo: https://github.com/gitleaks/gitleaks-precommit-hooks
+    rev: v8.18.2
+    hooks:
+      - id: gitleaks
+        name: Gitleaks Secret Detection
+        entry: gitleaks detect --source=. --no-git

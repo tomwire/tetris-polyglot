@@ -1,0 +1,26 @@
+{
+    "name": "tetris-engine-node",
+    "version": "0.1.0",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev": "tsx src/main.ts",
+        "start": "node dist/main.js",
+        "test": "node --experimental-vm-modules node_modules/.bin/jest --forceExit",
+        "lint": "eslint src/ --format stylish",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "ws": "^8.18.1"
+    },
+    "devDependencies": {
+        "@types/node": "^20.11.0",
+        "@types/ws": "^8.18.1",
+        "eslint": "^8.57.0",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.1.2",
+        "tsx": "^4.7.0",
+        "typescript": "^5.9.3"
+    }
+}

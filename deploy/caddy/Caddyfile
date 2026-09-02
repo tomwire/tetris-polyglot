@@ -1,0 +1,138 @@
+# Polyglot Tetris — Caddy Reverse Proxy Configuration
+# Production: tetris.thomaswire.com with auto-TLS
+
+{
+	email tom@thomaswire.com
+	
+	# Global options
+	admin off
+	auto_https ignore_recorded
+	
+	# Log configuration
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+	
+	# Error pages
+	handle_errors {
+		respond / 404
+	}
+}
+
+tetris.thomaswire.com {
+	# TLS — Caddy will auto-provision via Let's Encrypt/ACME
+	# Local dev: comment above line for HTTP-only
+	
+	# ──────────────────────────────────────────────
+	# Health check endpoint
+	# ──────────────────────────────────────────────
+	handle /health {
+		respond "OK" 200
+		header Content-Type text/plain
+	}
+
+	# ──────────────────────────────────────────────
+	# Prometheus metrics scraping (internal)
+	# ──────────────────────────────────────────────
+	handle_path /prometheus/* {
+		reverse_proxy prometheus:9090
+	}
+
+	# ──────────────────────────────────────────────
+	# Grafana dashboard
+	# ──────────────────────────────────────────────
+	handle_path /grafana* {
+		reverse_proxy grafana:3000
+		header {
+			X-Frame-Options "SAMEORIGIN"
+			X-Content-Type-Options "nosniff"
+		}
+	}
+
+	# ──────────────────────────────────────────────
+	# Frontend (React SPA)
+	# ──────────────────────────────────────────────
+	handle_path / * {
+		file_server {
+			root /srv/frontend/build
+			index index.html
+			try_files {uri} /index.html
+		}
+		header {
+			Cache-Control "public, max-age=3600"
+			X-Content-Type-Options "nosniff"
+			Referrer-Policy "strict-origin-when-cross-origin"
+			Permissions-Policy "camera=(), microphone=()"
+		}
+	}
+
+	# ──────────────────────────────────────────────
+	# ──────────────────────────────────────────────
+	# Default WebSocket endpoint — routes to node engine
+	# App connects here when no engine selector is set
+	# ──────────────────────────────────────────────
+
+	handle_path /ws {
+		reverse_proxy node-engine:9000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
+	}
+
+	# Engine WebSocket endpoints (engine-specific)
+	# ──────────────────────────────────────────────
+
+	# Go Engine
+	handle_path /ws/go-engine {
+		reverse_proxy go-engine:9000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
+	}
+
+	# Rust Engine
+	handle_path /ws/rust-engine {
+		reverse_proxy rust-engine:9000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
+	}
+
+	# Node.js Engine
+	handle_path /ws/node-engine {
+		reverse_proxy node-engine:9000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
+	}
+
+	# Python Engine
+	handle_path /ws/python-engine {
+		reverse_proxy python-engine:9000 {
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
+	}
+
+	# ──────────────────────────────────────────────
+	# Engine HTTP API endpoints (metrics, health)
+	# ──────────────────────────────────────────────
+
+	handle_path /api/go-engine/metrics {
+		reverse_proxy go-engine:8000/metrics
+	}
+
+	handle_path /api/rust-engine/metrics {
+		reverse_proxy rust-engine:8000/metrics
+	}
+
+	handle_path /api/node-engine/metrics {
+		reverse_proxy node-engine:8000/metrics
+	}
+
+	handle_path /api/python-engine/metrics {
+		reverse_proxy python-engine:8000/metrics
+	}
+}

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tetris-engine-python"
+version = "0.1.0"
+description = "Tetris engine — Python/FastAPI reference implementation of the polyglot protocol"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "websockets>=12.0",
+    "pydantic>=2.6.0",
+]
+
+[project.optional-dependencies]
+dev = ["ruff", "pytest", "mypy"]
+metrics = ["prometheus-client>=0.20.0"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]

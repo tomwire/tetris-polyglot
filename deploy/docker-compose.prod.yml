@@ -1,0 +1,100 @@
+# Polyglot Tetris — Production deployment
+# Built and served entirely via Docker containers, following homelab conventions.
+# Run: docker compose -f deploy/docker-compose.prod.yml up --build -d
+
+services:
+  # ─── Node.js WebSocket Engine (primary) ──────────────────────
+  tetris-engine:
+    build:
+      context: ../engines/node
+      dockerfile: Dockerfile
+    container_name: tetris-engine
+    restart: unless-stopped
+    environment:
+      - ENGINE_NAME=node-engine
+      - HTTP_PORT=8000
+      # Persistent top-5 scoreboard (writes to /app/data/scores.json on the volume)
+      - SCORES_FILE=/app/data/scores.json
+    volumes:
+      - tetris-engine-scores:/app/data
+    expose:
+      - "8000"
+    networks:
+      - homelab_media_net
+
+  # ─── Go WebSocket Engine ────────────────────────────────────────
+  go-engine:
+    build:   
+      context: ../engines/go
+      dockerfile: Dockerfile
+    container_name: go-engine
+    restart: unless-stopped
+    environment:
+      - ENGINE_NAME=go-engine
+      - HTTP_PORT=8000
+      - SCORES_FILE=/app/data/scores.json
+    volumes:
+      - tetris-go-scores:/app/data
+    expose:
+      - "8000"
+    networks:
+      - homelab_media_net
+
+  # ─── Rust WebSocket Engine ──────────────────────────────────────
+  rust-engine:
+    build:   
+      context: ../engines/rust
+      dockerfile: Dockerfile
+    container_name: rust-engine
+    restart: unless-stopped
+    environment:
+      - ENGINE_NAME=rust-engine
+      - HTTP_PORT=8000
+      - SCORES_FILE=/app/data/scores.json
+    volumes:
+      - tetris-rust-scores:/app/data
+    expose:
+      - "8000"
+    networks:
+      - homelab_media_net
+
+  # ─── Python WebSocket Engine ────────────────────────────────────
+  python-engine:
+    build:   
+      context: ../engines/python
+      dockerfile: Dockerfile
+    container_name: python-engine
+    restart: unless-stopped
+    environment:
+      - ENGINE_NAME=python-engine
+      - HTTP_PORT=8000
+      - SCORES_FILE=/app/data/scores.json
+    volumes:
+      - tetris-python-scores:/app/data
+    expose:
+      - "8000"
+    networks:
+      - homelab_media_net
+
+  # ─── Frontend (React + Vite → Nginx static files) ───────────
+  tetris-frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile.prod
+    container_name: tetris-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - homelab_media_net
+
+volumes:
+  # Per-engine persistent top-5 scoreboards; survive `up --build`/recreate.
+  tetris-engine-scores:   # node
+  tetris-go-scores:       # go
+  tetris-rust-scores:     # rust
+  tetris-python-scores:   # python
+
+networks:
+  homelab_media_net:
+    external: true        # Reuse homelab's shared network

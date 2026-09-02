@@ -1,0 +1,202 @@
+# Polyglot Tetris — Production-like Docker Compose Stack
+# Run with: docker compose -f deploy/docker-compose.yml up --build -d
+
+services:
+  # ──────────────────────────────────────────────
+  # Go Engine (Reference Implementation)
+  # ──────────────────────────────────────────────
+  go-engine:
+    build:
+      context: ../engines/go
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"     # HTTP API + /metrics
+      - "9001:9000"     # WebSocket upgrade
+    environment:
+      - ENGINE_NAME=go-engine
+      - TICK_RATE_MS=100
+      - PROMETHEUS_PORT=8000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    labels:
+      - "polyglot.engine=go"
+      - "polyglot.port.websocket=9001"
+
+  # ──────────────────────────────────────────────
+  # Rust Engine
+  # ──────────────────────────────────────────────
+  rust-engine:
+    build:
+      context: ../engines/rust
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"     # HTTP API + /metrics
+      - "9002:9000"     # WebSocket upgrade
+    environment:
+      - ENGINE_NAME=rust-engine
+      - TICK_RATE_MS=100
+      - PROMETHEUS_PORT=8000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    labels:
+      - "polyglot.engine=rust"
+      - "polyglot.port.websocket=9002"
+
+  # ──────────────────────────────────────────────
+  # Node.js Engine
+  # ──────────────────────────────────────────────
+  node-engine:
+    build:
+      context: ../engines/node
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8000"     # HTTP API + /metrics
+      - "9003:9000"     # WebSocket upgrade
+    environment:
+      - ENGINE_NAME=node-engine
+      - TICK_RATE_MS=100
+      - PROMETHEUS_PORT=8000
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    labels:
+      - "polyglot.engine=node"
+      - "polyglot.port.websocket=9003"
+
+  # ──────────────────────────────────────────────
+  # Python Engine
+  # ──────────────────────────────────────────────
+  python-engine:
+    build:
+      context: ../engines/python
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"     # HTTP API + /metrics
+      - "9004:9000"     # WebSocket upgrade
+    environment:
+      - ENGINE_NAME=python-engine
+      - TICK_RATE_MS=100
+      - PROMETHEUS_PORT=8000
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    labels:
+      - "polyglot.engine=python"
+      - "polyglot.port.websocket=9004"
+
+  # ──────────────────────────────────────────────
+  # Frontend (React + Canvas)
+  # ──────────────────────────────────────────────
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"     # React dev server or production static
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_GO_WS=wss://tetris.thomaswire.com/ws/go-engine
+      - REACT_APP_RUST_WS=wss://tetris.thomaswire.com/ws/rust-engine
+      - REACT_APP_NODE_WS=wss://tetris.thomaswire.com/ws/node-engine
+      - REACT_APP_PYTHON_WS=wss://tetris.thomaswire.com/ws/python-engine
+    depends_on:
+      go-engine:
+        condition: service_healthy
+      rust-engine:
+        condition: service_healthy
+      node-engine:
+        condition: service_healthy
+      python-engine:
+        condition: service_healthy
+    labels:
+      - "polyglot.service=frontend"
+
+  # ──────────────────────────────────────────────
+  # Caddy Reverse Proxy (production)
+  # ──────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"         # HTTP redirect to HTTPS
+      - "443:443"       # TLS + WebSocket upgrades
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    labels:
+      - "polyglot.service=proxy"
+
+  # ──────────────────────────────────────────────
+  # Prometheus (Scrapes all engines + Caddy)
+  # ──────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.50.0
+    volumes:
+      - ../observability/prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--enable-feature=exemplar-info'
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # Grafana (Pre-provisioned dashboards)
+  # ──────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.3.0
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=polyglot-tetris-2024
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3001
+    ports:
+      - "3001:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+networks:
+  default:
+    name: tetris-polyglot-net
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:
+  prometheus_data:
+  grafana_data:

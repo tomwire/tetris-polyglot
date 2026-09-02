@@ -1,0 +1,65 @@
+#!/bin/bash
+# Pre-commit hook: Secret detection via TruffleHog + Gitleaks (with auto-download)
+set -e
+
+echo "🔍 Running secret detection..."
+
+BINDIR="$HOME/.local/bin"
+mkdir -p "$BINDIR"
+export PATH="$BINDIR:$PATH"
+
+TRUFFLEHOG_BIN="$BINDIR/trufflehog"
+GITLEAKS_BIN="$BINDIR/gitleaks"
+
+# Auto-install trufflehog if not present
+if [ ! -x "$TRUFFLEHOG_BIN" ]; then
+    echo "   Installing TruffleHog..."
+    curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b "$BINDIR" 2>&1 || echo "   ⚠️  TruffleHog install failed (skipping)"
+fi
+
+# Auto-install gitleaks if not present
+if [ ! -x "$GITLEAKS_BIN" ]; then
+    echo "   Installing Gitleaks..."
+    curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar xz -C "$BINDIR" 2>&1 || echo "   ⚠️  Gitleaks install failed (skipping)"
+fi
+
+# Only check staged files (efficient)
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$STAGED_FILES" ]; then
+    echo "   ✅ No staged changes to scan"
+    exit 0
+fi
+
+echo ""
+echo "   Scanning: $(echo $STAGED_FILES | wc -w) files"
+
+# TruffleHog (scan all tracked + unstaged files for safety)
+if [ -x "$TRUFFLEHOG_BIN" ]; then
+    echo ""
+    echo "1️⃣  TruffleHog:"
+    if $TRUFFLEHOG_BIN filesystem --only-verified 2>&1 | grep -q "🚨"; then
+        echo ""
+        echo "❌ TRUFFLEHOG FOUND SECRETS!"
+        exit 1
+    fi
+    echo "   ✅ No secrets found"
+else
+    echo "   ⏭️  TruffleHog skipped (not installed)"
+fi
+
+# Gitleaks (scan current working directory, skip .git/)
+if [ -x "$GITLEAKS_BIN" ]; then
+    echo ""
+    echo "2️⃣  Gitleaks:"
+    if $GITLEAKS_BIN detect --source=. --no-git 2>&1 | grep -q "Found"; then
+        echo ""
+        echo "❌ GITLEAKS FOUND SECRETS!"
+        exit 1
+    fi
+    echo "   ✅ No leaks detected"
+else
+    echo "   ⏭️  Gitleaks skipped (not installed)"
+fi
+
+echo ""
+echo "🔒 Secret detection passed. Committing..."
