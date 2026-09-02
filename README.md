@@ -1,6 +1,6 @@
 # Polyglot Tetris — Multi-Runtime Benchmark & Showcase Platform
 
-A production-grade showcase demonstrating **polyglot backend engineering** with four independent Tetris implementations (Go, Rust, Node.js/TypeScript, Python) unified under a strict WebSocket protocol contract. Demonstrates mid-game engine hot-swapping, real-time cross-runtime telemetry, and full DevOps tooling.
+A production-grade showcase demonstrating **polyglot backend engineering** with four independent Tetris implementations (Go, Rust, Node.js/TypeScript, Python) unified under a strict WebSocket protocol contract. Demonstrates engine hot-swapping, real-time cross-runtime telemetry, and full DevOps tooling.
 
 
 ## Play it here:
@@ -17,8 +17,8 @@ A production-grade showcase demonstrating **polyglot backend engineering** with 
 └────┬──────────┬──────────┬──────────┬──────────────────┘
      │          │          │          │
   ┌──▼──┐   ┌───▼──┐   ┌───▼──┐   ┌───▼──┐
-  │Go    │   │Rust   │   │Node.js│   │Python│
-  │Engine│   │Engine│   │Engine │   │Engine│
+  │Go    │  │Rust  │   │Node  │  │Python│
+  │Engine│  │Engine│   │Engine│  │Engine│
   └──┬──┘   └──┬───┘   └──┬───┘   └──┬───┘
      │          │          │          │
      └──────────┴────┬─────┴──────────┘
@@ -30,10 +30,10 @@ A production-grade showcase demonstrating **polyglot backend engineering** with 
               └───────────┘
                     │
               ┌─────▼─────┐
-              │ Prometheus │
+              │ Prometheus│
               └─────┬─────┘
                 ┌───▼────┐
-                │ Grafana │
+                │ Grafana│
                 └────────┘
 ```
 
