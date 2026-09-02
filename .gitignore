@@ -64,3 +64,6 @@ engines/*/target/
 # Notes and Local Dev
 memory/
 docs/
+
+# keep the frontend lockfile so Dependabot security updates can resolve
+!frontend/package-lock.json
